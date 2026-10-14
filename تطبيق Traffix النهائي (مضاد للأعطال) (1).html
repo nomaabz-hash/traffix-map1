@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Traffix Pro - Final APK Version</title>
+    
+    <!-- مفتاح ماب بوكس -->
+    <script>
+        window.MAPBOX_API_KEY = "pk.eyJ1IjoiYWg1IiwiYSI6ImNtdjdlMzExaDBveXkzMHI0bmgzaGp3OHUifQ.oqFCDwtYqOo3o3JqSgER5A";
+    </script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0f172a',
+                        darkcard: '#1e293b',
+                        brand: { 50: '#eef2ff', 100: '#e0e7ff', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3' }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- المكتبات الأساسية -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&display=swap');
+        
+        body, html { font-family: 'Tajawal', sans-serif; margin: 0; padding: 0; height: 100vh; width: 100vw; overflow: hidden; background-color: #e5e7eb; -webkit-tap-highlight-color: transparent; }
+        
+        /* تأمين ظهور الخريطة بملء الشاشة */
+        #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; height: 100%; width: 100%; background-color: #cbd5e1; }
+        
+        .ui-layer { position: absolute; z-index: 1000; pointer-events: none; }
+        .ui-layer > * { pointer-events: auto; }
+
+        .custom-marker { background: transparent; border: none; }
+        .marker-icon-container { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4); border: 3px solid white; transition: transform 0.2s; }
+        .dark .marker-icon-container { border-color: #0f172a; }
+
+        .user-nav-arrow { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s linear; }
+        .user-nav-arrow i { color: #4f46e5; font-size: 40px; text-shadow: 0 4px 10px rgba(0,0,0,0.5); transform: rotate(-45deg); }
+        .dark .user-nav-arrow i { color: #818cf8; }
+
+        .slide-up { animation: slideUp 0.3s forwards; } @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .slide-down { animation: slideDown 0.3s forwards; } @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .fade-in { animation: fadeIn 0.2s forwards; } @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .pulse-btn { animation: pulse 2s infinite; } @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.6); } 70% { box-shadow: 0 0 0 15px rgba(79, 70, 229, 0); } 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); } }
+
+        .leaflet-routing-container { display: none !important; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; } .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .brand-logo { font-family: 'Montserrat', sans-serif; background: linear-gradient(135deg, #4f46e5, #d946ef); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 0.05em; }
+    </style>
+</head>
+<body class="transition-colors duration-300">
+
+    <div id="map"></div>
+
+    <div class="ui-layer top-0 inset-x-0 w-full p-4 flex flex-col items-center mt-2 z-[1500]">
+        
+        <!-- Header -->
+        <div class="w-full max-w-md flex justify-between items-center mb-3 px-2">
+            <div class="flex items-center gap-2">
+                <svg class="w-10 h-10 drop-shadow-md" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#4f46e5" />
+                            <stop offset="100%" stop-color="#d946ef" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M50 15 C36 15 26 25 26 38 C26 58 50 85 50 85 C50 85 74 58 74 38 C74 25 64 15 50 15 Z M50 50 C43 50 38 45 38 38 C38 31 43 26 50 26 C57 26 62 31 62 38 C62 45 57 50 50 50 Z" fill="url(#logoGrad)"/>
+                    <path d="M 15 55 Q 15 65 30 75 Q 45 82 60 70 L 53 62 Q 40 70 30 63 Q 23 58 24 50 L 15 55 Z M 80 40 Q 82 30 70 20 Q 55 10 40 22 L 48 30 Q 58 22 68 30 Q 75 36 72 45 L 80 40 Z" fill="url(#logoGrad)"/>
+                    <polygon points="76,45 88,40 85,25" fill="url(#logoGrad)"/>
+                </svg>
+                <h1 class="text-3xl font-black uppercase brand-logo drop-shadow-sm">TRAFFIX</h1>
+            </div>
+            
+            <div class="flex gap-2">
+                <div class="relative">
+                    <button id="btn-lang" class="bg-white/90 dark:bg-darkcard/90 backdrop-blur text-brand-600 dark:text-brand-400 w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-colors border border-gray-100 dark:border-gray-700 active:scale-95 pointer-events-auto">
+                        <i class="fas fa-language text-xl"></i>
+                    </button>
+                    <div id="lang-menu" class="hidden absolute top-12 end-0 bg-white dark:bg-darkcard rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden w-28 fade-in">
+                        <button id="lang-ar" class="py-2 px-4 text-start font-bold text-gray-700 dark:text-white hover:bg-brand-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-700">العربية</button>
+                        <button id="lang-en" class="py-2 px-4 text-start font-bold text-gray-700 dark:text-white hover:bg-brand-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-700">English</button>
+                        <button id="lang-ku" class="py-2 px-4 text-start font-bold text-gray-700 dark:text-white hover:bg-brand-50 dark:hover:bg-gray-800">Kurdî</button>
+                    </div>
+                </div>
+                <button id="btn-dark-mode" class="bg-white/90 dark:bg-darkcard/90 backdrop-blur text-gray-700 dark:text-yellow-400 w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-colors border border-gray-100 dark:border-gray-700 active:scale-95 pointer-events-auto">
+                    <i class="fas fa-moon dark:hidden text-lg"></i>
+                    <i class="fas fa-sun hidden dark:block text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Banner -->
+        <div id="nav-banner" class="hidden w-full max-w-md bg-brand-600 text-white rounded-2xl shadow-xl p-4 mb-3 slide-down flex justify-between items-center border-2 border-brand-400">
+            <div class="flex items-center gap-3 w-full">
+                <i class="fas fa-arrow-turn-up text-3xl" id="nav-arrow-icon"></i>
+                <div class="flex-1 min-w-0">
+                    <div id="nav-dest" class="font-black text-lg truncate">الوجهة</div>
+                    <div id="nav-eta" class="text-sm font-bold opacity-90" data-i18n="calc">جارٍ الحساب...</div>
+                </div>
+                <div id="weather-widget" class="hidden flex flex-col items-center bg-white/20 rounded-xl p-2 shrink-0 backdrop-blur">
+                    <i id="weather-icon" class="fas fa-cloud-sun text-2xl mb-1"></i>
+                    <span id="weather-temp" class="text-xs font-bold font-mono">--°C</span>
+                </div>
+                <button id="btn-cancel-route" class="bg-brand-800 hover:bg-brand-900 w-10 h-10 rounded-full flex items-center justify-center transition-colors ms-2 shrink-0">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="flex w-full max-w-md items-center gap-2 relative" id="search-container">
+            <div class="bg-white dark:bg-darkcard rounded-full shadow-lg flex-1 flex items-center px-4 py-3 border border-gray-100 dark:border-gray-700 transition-colors">
+                <i class="fas fa-search text-gray-400 dark:text-gray-500 ms-3 text-lg"></i>
+                <input type="text" id="search-input" data-i18n-ph="search_ph" placeholder="البحث عبر Mapbox..." class="w-full bg-transparent outline-none text-gray-800 dark:text-white font-bold placeholder-gray-400 text-start ms-2" autocomplete="off">
+                <i id="search-spinner" class="fas fa-spinner fa-spin text-brand-500 ms-2 hidden"></i>
+                <button id="btn-clear-search" class="hidden text-gray-400 hover:text-red-500 ms-2"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+
+        <!-- Search Results -->
+        <div id="search-results" class="hidden w-full max-w-md bg-white dark:bg-darkcard mt-2 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden max-h-60 overflow-y-auto custom-scroll fade-in text-start pointer-events-auto"></div>
+    </div>
+
+    <!-- Speedometer -->
+    <div id="speedometer" class="hidden ui-layer bottom-28 start-4 bg-white dark:bg-darkcard w-16 h-16 rounded-full shadow-2xl border-4 border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center transition-colors">
+        <span id="speed-value" class="text-2xl font-black text-gray-800 dark:text-white leading-none">0</span>
+        <span class="text-[10px] text-gray-500 font-bold" data-i18n="speed_unit">كم/س</span>
+    </div>
+
+    <!-- Bottom Actions -->
+    <div class="ui-layer bottom-0 inset-x-0 w-full flex flex-col pointer-events-none">
+        <div class="flex justify-between items-end p-4 mb-2 w-full max-w-xl mx-auto">
+            <div class="flex flex-col gap-3">
+                <button id="btn-location" class="pointer-events-auto bg-white dark:bg-darkcard text-gray-700 dark:text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95 transition-colors border border-gray-100 dark:border-gray-700 relative">
+                    <i id="location-icon" class="fas fa-location-crosshairs text-xl text-brand-600 dark:text-brand-400"></i>
+                    <div id="audio-badge" class="hidden absolute -top-1 -end-1 bg-red-500 w-3 h-3 rounded-full animate-ping"></div>
+                </button>
+            </div>
+            <button id="btn-open-report" class="pointer-events-auto bg-brand-600 text-white w-16 h-16 rounded-full shadow-xl flex items-center justify-center hover:bg-brand-700 active:scale-95 transition-transform pulse-btn border-4 border-white dark:border-darkbg z-50">
+                <i class="fas fa-exclamation text-3xl drop-shadow-md"></i>
+            </button>
+        </div>
+
+        <div class="w-full bg-white dark:bg-darkcard rounded-t-3xl shadow-[0_-5px_25px_rgba(0,0,0,0.1)] flex justify-around items-center p-4 pb-6 pointer-events-auto border-t border-gray-100 dark:border-gray-800 z-40 transition-colors">
+            <button class="flex flex-col items-center text-brand-600 dark:text-brand-400 hover:scale-105 transition-transform">
+                <i class="fas fa-map-location-dot text-2xl mb-1"></i><span class="text-xs font-bold" data-i18n="map">الخريطة</span>
+            </button>
+            <button id="btn-routes" class="flex flex-col items-center text-gray-400 dark:text-gray-500 hover:text-gray-700 hover:scale-105 transition-all">
+                <i class="fas fa-route text-2xl mb-1"></i><span class="text-xs font-bold" data-i18n="routes">مساراتي</span>
+            </button>
+            <button id="btn-profile" class="flex flex-col items-center text-gray-400 dark:text-gray-500 hover:text-gray-700 hover:scale-105 transition-all relative">
+                <i class="fas fa-circle-user text-2xl mb-1"></i><span class="text-xs font-bold" data-i18n="account">حسابي</span>
+                <div id="user-badge" class="absolute -top-1 -end-2 bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white dark:border-darkcard shadow-sm">0</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="report-menu" class="hidden fixed inset-0 z-[2000] bg-black bg-opacity-50 flex items-end justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-darkcard w-full max-w-md rounded-t-[30px] shadow-2xl p-6 slide-up pb-10 pointer-events-auto relative border-t border-gray-200 dark:border-gray-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-gray-800 dark:text-white" data-i18n="add_report">إضافة تبليغ</h3>
+                <button id="btn-close-report" class="text-gray-400 hover:text-gray-700 bg-gray-100 dark:bg-gray-800 w-10 h-10 rounded-full flex items-center justify-center transition-colors"><i class="fas fa-xmark text-xl"></i></button>
+            </div>
+            <input type="text" id="report-comment" data-i18n-ph="report_ph" placeholder="أضف تفاصيل..." class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 mb-4 text-gray-800 dark:text-white outline-none font-medium text-start">
+            <div class="grid grid-cols-3 gap-3">
+                <button data-report="traffic" class="report-btn flex flex-col items-center justify-center p-3 bg-red-50 dark:bg-red-900/20 rounded-2xl hover:bg-red-100 border border-red-100 dark:border-red-900/50"><div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shadow-md mb-2"><i class="fas fa-car text-white text-xl"></i></div><span class="font-bold text-gray-800 dark:text-gray-200 text-sm" id="btn_lbl_traffic">ازدحام</span></button>
+                <button data-report="accident" class="report-btn flex flex-col items-center justify-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-2xl hover:bg-orange-100 border border-orange-100 dark:border-orange-900/50"><div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-md mb-2"><i class="fas fa-car-burst text-white text-xl"></i></div><span class="font-bold text-gray-800 dark:text-gray-200 text-sm" id="btn_lbl_accident">حادث</span></button>
+                <button data-report="hazard" class="report-btn flex flex-col items-center justify-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl hover:bg-yellow-100 border border-yellow-100 dark:border-yellow-900/50"><div class="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center shadow-md mb-2"><i class="fas fa-triangle-exclamation text-gray-900 text-xl"></i></div><span class="font-bold text-gray-800 dark:text-gray-200 text-sm" id="btn_lbl_hazard">خطر</span></button>
+                <button data-report="police" class="report-btn flex flex-col items-center justify-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl hover:bg-blue-100 border border-blue-100 dark:border-blue-900/50"><div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-md mb-2"><i class="fas fa-shield-halved text-white text-xl"></i></div><span class="font-bold text-gray-800 dark:text-gray-200 text-sm" id="btn_lbl_police">سيطرة</span></button>
+                <button data-report="roadblock" class="report-btn flex flex-col items-center justify-center p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl hover:bg-gray-200 border border-gray-200 dark:border-gray-700"><div class="w-12 h-12 bg-gray-800 dark:bg-gray-700 rounded-full flex items-center justify-center shadow-md mb-2 border-2 border-red-500"><i class="fas fa-road-barrier text-white text-xl"></i></div><span class="font-bold text-gray-800 dark:text-gray-200 text-sm" id="btn_lbl_roadblock">قطع طريق</span></button>
+                <button data-report="camera" class="report-btn flex flex-col items-center justify-center p-3 bg-slate-50 dark:bg-slate-900/40 rounded-2xl hover:bg-slate-100 border border-slate-200 dark:border-slate-700"><div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center shadow-md mb-2"><i class="fas fa-camera text-white text-xl"></i></div><span class="font-bold text-gray-800 dark:text-gray-200 text-sm" id="btn_lbl_camera">كاميرا</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Routes Modal -->
+    <div id="routes-modal" class="hidden fixed inset-0 z-[2000] bg-black bg-opacity-50 flex items-center justify-center backdrop-blur-sm px-4">
+        <div class="bg-white dark:bg-darkcard w-full max-w-sm rounded-3xl shadow-2xl p-6 fade-in relative border border-gray-100 dark:border-gray-700">
+            <button id="btn-close-routes" class="absolute top-4 end-4 text-gray-400 bg-gray-100 dark:bg-gray-800 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 text-center" data-i18n="saved_places">الأماكن المحفوظة</h2>
+            <div class="flex flex-col gap-4">
+                <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <div class="flex items-center gap-4"><div class="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center"><i class="fas fa-home text-xl"></i></div><div><div class="font-bold text-gray-800 dark:text-white text-lg" data-i18n="home">المنزل</div><div id="home-status" class="text-xs text-gray-500 font-medium">غير محدد</div></div></div>
+                    <div class="flex gap-2"><button data-place="home" class="btn-set-place w-10 h-10 bg-white dark:bg-gray-700 text-gray-600 rounded-full shadow"><i class="fas fa-thumbtack"></i></button><button data-place="home" class="btn-route-place w-10 h-10 bg-brand-600 text-white rounded-full shadow"><i class="fas fa-directions"></i></button></div>
+                </div>
+                <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <div class="flex items-center gap-4"><div class="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center"><i class="fas fa-briefcase text-xl"></i></div><div><div class="font-bold text-gray-800 dark:text-white text-lg" data-i18n="work">العمل</div><div id="work-status" class="text-xs text-gray-500 font-medium">غير محدد</div></div></div>
+                    <div class="flex gap-2"><button data-place="work" class="btn-set-place w-10 h-10 bg-white dark:bg-gray-700 text-gray-600 rounded-full shadow"><i class="fas fa-thumbtack"></i></button><button data-place="work" class="btn-route-place w-10 h-10 bg-brand-600 text-white rounded-full shadow"><i class="fas fa-directions"></i></button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="hidden fixed inset-0 z-[2000] bg-black bg-opacity-50 flex items-center justify-center backdrop-blur-sm px-4">
+        <div class="bg-white dark:bg-darkcard w-full max-w-sm rounded-3xl shadow-2xl p-6 fade-in text-center relative border border-gray-100 dark:border-gray-700">
+            <button id="btn-close-profile" class="absolute top-4 end-4 text-gray-400 bg-gray-100 dark:bg-gray-800 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
+            <div id="profile-avatar" class="w-24 h-24 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg border-4 border-white dark:border-darkbg"><i class="fas fa-user-secret text-4xl text-white"></i></div>
+            <h2 id="profile-name" class="text-2xl font-bold text-gray-800 dark:text-white mb-1" data-i18n="anon_driver">سائق مجهول</h2>
+            <p id="profile-desc" class="text-sm text-gray-500 dark:text-gray-400 mb-4" data-i18n="login_desc">سجل دخولك لحفظ نقاطك</p>
+            <button id="btn-login" class="mb-6 bg-brand-600 hover:bg-brand-700 text-white font-bold py-2 px-6 rounded-full shadow-md w-full flex justify-center items-center gap-2"><i class="fab fa-google"></i> <span data-i18n="login_btn">تسجيل الدخول</span></button>
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 flex justify-around items-center border border-gray-100 dark:border-gray-700">
+                <div class="text-center"><div id="profile-points" class="text-3xl font-black text-brand-600 dark:text-brand-400">0</div><div class="text-xs font-bold text-gray-500 mt-1" data-i18n="points">نقطة</div></div>
+                <div class="h-10 w-px bg-gray-200 dark:bg-gray-700"></div>
+                <div class="text-center"><div id="profile-rank" class="text-xl font-bold text-yellow-500" data-i18n="beginner">مبتدئ</div><div class="text-xs font-bold text-gray-500 mt-1" data-i18n="rank">المستوى</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-xl z-[3000] hidden opacity-0 transition-opacity duration-300 flex items-center gap-3 font-bold pointer-events-none w-max max-w-[90%]"><i id="toast-icon" class="fas fa-info-circle text-xl"></i><span id="toast-message"></span></div>
+
+    <!-- مكتبات الخريطة الكلاسيكية (ضمان العمل على WebViews) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+    <!-- مكتبات Firebase الكلاسيكية (Compat) لضمان العمل على AppsGeyser بدون أخطاء Modules -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // عزل الأكواد بـ (IIFE) لتجنب أي تضارب مع إعلانات AppsGeyser
+        (function() {
+            
+            // 1. معالج الأخطاء العالمي: إذا حدث خطأ سنراه في مربع البحث بدلاً من الشاشة البيضاء
+            window.addEventListener('error', function(e) {
+                const s = document.getElementById('search-input');
+                if(s) s.value = "Error: " + e.message;
+            });
+            window.addEventListener('unhandledrejection', function(e) {
+                const s = document.getElementById('search-input');
+                if(s) s.value = "Promise Error: " + e.reason;
+            });
+
+            const dict = {
+                search_ph: { ar: "البحث عبر Mapbox...", en: "Search Mapbox...", ku: "گەڕان..." },
+                calc: { ar: "جارٍ الحساب...", en: "Calculating...", ku: "هەژمار دەکرێت..." },
+                map: { ar: "الخريطة", en: "Map", ku: "نەخشە" }, routes: { ar: "مساراتي", en: "My Routes", ku: "ڕێگاکانم" }, account: { ar: "حسابي", en: "Account", ku: "هەژمارەکەم" },
+                speed_unit: { ar: "كم/س", en: "km/h", ku: "کم/ک" }, add_report: { ar: "إضافة تبليغ", en: "Add Report", ku: "زیادکردنی ڕاپۆرت" },
+                report_ph: { ar: "أضف تفاصيل...", en: "Add details...", ku: "وردەکاری زیاد بکە..." }, traffic: { ar: "ازدحام", en: "Traffic", ku: "قەرەباڵغی" },
+                accident: { ar: "حادث", en: "Crash", ku: "ڕووداو" }, hazard: { ar: "خطر", en: "Hazard", ku: "مەترسی" }, police: { ar: "سيطرة", en: "Police", ku: "پۆلیس" },
+                roadblock: { ar: "قطع طريق", en: "Closure", ku: "ڕێگەگرتن" }, camera: { ar: "كاميرا", en: "Camera", ku: "کامێرا" },
+                anon_driver: { ar: "سائق مجهول", en: "Anonymous Driver", ku: "شۆفێری نەناسراو" }, login_desc: { ar: "سجل دخولك لحفظ نقاطك", en: "Login to save points", ku: "چوونەژوورەوە بۆ پاراستنی خاڵەکانت" },
+                login_btn: { ar: "تسجيل الدخول", en: "Login", ku: "چوونەژوورەوە" }, points: { ar: "نقطة", en: "Pts", ku: "خاڵ" }, rank: { ar: "المستوى", en: "Rank", ku: "ئاست" },
+                beginner: { ar: "مبتدئ", en: "Beginner", ku: "سەرەتایی" }, expert: { ar: "متمرس", en: "Expert", ku: "شارەزا" }, pro: { ar: "محترف", en: "Pro", ku: "پڕۆ" }, king: { ar: "ملك الشارع", en: "King", ku: "پاشا" },
+                exist: { ar: "موجود", en: "Exists", ku: "بوونی هەیە" }, not_exist: { ar: "غير موجود", en: "Not there", ku: "لێرە نیە" },
+                gps_error: { ar: "تأكد من تفعيل GPS", en: "Enable GPS", ku: "GPS چالاک بکە" }, nav_cancel: { ar: "تم إلغاء الملاحة", en: "Navigation cancelled", ku: "ڕێنماییکردن هەڵوەشایەوە" },
+                no_results: { ar: "لا توجد نتائج", en: "No results", ku: "هیچ ئەنجامێک نیە" }, route_found: { ar: "تم حساب المسار", en: "Route calculated", ku: "ڕێڕەو دۆزرایەوە" },
+                mins: { ar: "دقيقة", en: "mins", ku: "خولەک" }, km: { ar: "كم", en: "km", ku: "کم" }, meter: { ar: "متر", en: "m", ku: "مەتر" },
+                report_sent: { ar: "تمت المشاركة!", en: "Report sent!", ku: "نێردرا!" }, vote_sent: { ar: "تم التأكيد!", en: "Confirmed!", ku: "پەسەندکرا!" }, now: { ar: "الآن", en: "Now", ku: "ئێستا" },
+                auth_success: { ar: "تم تسجيل الدخول!", en: "Logged in!", ku: "چوویتە ژوورەوە!" }, verified: { ar: "سائق موثوق", en: "Verified Driver", ku: "شۆفێری باوەڕپێکراو" },
+                member: { ar: "عضو Traffix", en: "Traffix Member", ku: "ئەندامی ترافیکس" }, offline_mode: { ar: "وضع بدون إنترنت", en: "Offline Mode", ku: "دۆخی بێ ئینتەرنێت" },
+                sat_connect: { ar: "جارٍ الاتصال...", en: "Connecting...", ku: "پەیوەندی..." }, gps_stop: { ar: "تم الإيقاف", en: "Tracking stopped", ku: "وەستێنرا" },
+                dist_away: { ar: "على بُعد", en: "away", ku: "بە دووری" }, dest_set: { ar: "تم تحديد الوجهة", en: "Set destination", ku: "مەبەست دیاریکرا" },
+                saved_places: { ar: "الأماكن المحفوظة", en: "Saved Places", ku: "شوێنە پارێزراوەکان" }, home: { ar: "المنزل", en: "Home", ku: "ماڵەوە" }, work: { ar: "العمل", en: "Work", ku: "کار" }, set_success: { ar: "تم الحفظ", en: "Saved", ku: "پارێزرا" }
+            };
+
+            // 2. حماية الذاكرة (LocalStorage) لأن بعض الـ WebViews تمنعها
+            let currentLang = 'ar';
+            try {
+                currentLang = localStorage.getItem('traffix_lang') || 'ar';
+            } catch(e) { console.warn("LocalStorage Blocked"); }
+
+            function t(key) { return dict[key] && dict[key][currentLang] ? dict[key][currentLang] : key; }
+
+            let map, db, auth, currentUser, routingControl = null, watchId = null, userLocationMarker = null;
+            const markersMap = {}, markersData = {}, alertedMarkers = new Set(); 
+            let audioCtx, isAudioEnabled = false;
+            const BAGHDAD_CENTER = [33.3152, 44.3661];
+
+            function showToast(message, type = 'info') {
+                try {
+                    const toast = document.getElementById('toast'), msgEl = document.getElementById('toast-message'), iconEl = document.getElementById('toast-icon');
+                    msgEl.textContent = message; toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 text-white px-6 py-3 rounded-full shadow-2xl z-[3000] flex items-center gap-3 font-bold transition-opacity duration-300 pointer-events-none w-max max-w-[90%]';
+                    if (type === 'success') { toast.classList.add('bg-green-600'); iconEl.className = 'fas fa-check-circle text-xl'; }
+                    else if (type === 'error') { toast.classList.add('bg-red-600'); iconEl.className = 'fas fa-triangle-exclamation text-xl'; }
+                    else { toast.classList.add('bg-gray-800'); iconEl.className = 'fas fa-info-circle text-xl'; }
+                    toast.classList.remove('hidden'); void toast.offsetWidth; toast.style.opacity = '1';
+                    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => { toast.classList.add('hidden'); }, 300); }, 3500);
+                } catch(e) {}
+            }
+
+            function getReportConfig() {
+                return {
+                    'traffic': { icon: 'fa-car', bgClass: 'bg-red-500', name: t('traffic'), color: 'text-white' },
+                    'accident': { icon: 'fa-car-burst', bgClass: 'bg-orange-500', name: t('accident'), color: 'text-white' },
+                    'hazard': { icon: 'fa-triangle-exclamation', bgClass: 'bg-yellow-400', name: t('hazard'), color: 'text-gray-900' },
+                    'police': { icon: 'fa-shield-halved', bgClass: 'bg-blue-600', name: t('police'), color: 'text-white' },
+                    'roadblock': { icon: 'fa-road-barrier', bgClass: 'bg-gray-800 border-2 border-red-500', name: t('roadblock'), color: 'text-white' },
+                    'camera': { icon: 'fa-camera', bgClass: 'bg-slate-700', name: t('camera'), color: 'text-white' }
+                };
+            }
+
+            function enableAudio() {
+                if (isAudioEnabled) return;
+                try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume();
+                    if(window.speechSynthesis) { const u = new SpeechSynthesisUtterance(''); window.speechSynthesis.speak(u); }
+                    isAudioEnabled = true; document.getElementById('audio-badge').classList.add('hidden');
+                } catch(e) {}
+            }
+
+            function playAlertTone() {
+                if (!audioCtx) return; 
+                try {
+                    const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
+                    osc.type = 'square'; osc.frequency.setValueAtTime(600, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.connect(gainNode); gainNode.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+                } catch(e){}
+            }
+
+            function speakAlert(text) {
+                try {
+                    if (!window.speechSynthesis || !isAudioEnabled) return; window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text); utterance.lang = (currentLang === 'en') ? 'en-US' : 'ar-SA';
+                    utterance.rate = 1.0; window.speechSynthesis.speak(utterance);
+                } catch(e){}
+            }
+
+            async function fetchWeather(lat, lng) {
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`);
+                    const data = await res.json();
+                    if(data && data.current) {
+                        const temp = Math.round(data.current.temperature_2m); const code = data.current.weather_code; let icon = 'fa-cloud-sun'; 
+                        if(code <= 1) icon = 'fa-sun text-yellow-400'; else if(code <= 3) icon = 'fa-cloud text-gray-300'; else if(code <= 48) icon = 'fa-smog text-gray-400'; else if(code <= 67 || code >= 80) icon = 'fa-cloud-rain text-blue-300';
+                        document.getElementById('weather-widget').classList.remove('hidden'); document.getElementById('weather-temp').textContent = `${temp}°C`; document.getElementById('weather-icon').className = `fas ${icon} text-xl mb-0.5 drop-shadow-sm`;
+                    }
+                } catch(e) { document.getElementById('weather-widget').classList.add('hidden'); }
+            }
+
+            // 3. تهيئة الخريطة فوراً بدون انتظار DOM لكي نتجنب الشاشة البيضاء
+            try {
+                map = L.map('map', { zoomControl: false, attributionControl: false }).setView(BAGHDAD_CENTER, 13);
+                L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=' + currentLang + '&x={x}&y={y}&z={z}', { maxZoom: 20 }).addTo(map);
+                setTimeout(() => { if(map) map.invalidateSize(); }, 500);
+                setTimeout(() => { if(map) map.invalidateSize(); }, 1500);
+            } catch(e) {
+                document.getElementById('search-input').value = "Map Error: " + e.message;
+            }
+
+            // 4. تعريف دوال الواجهة كمتغيرات آمنة
+            const setAppLang = function(lang) {
+                currentLang = lang; 
+                try { localStorage.setItem('traffix_lang', lang); } catch(e){}
+                document.documentElement.lang = lang; document.documentElement.dir = (lang === 'en') ? 'ltr' : 'rtl';
+                document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+                document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.getAttribute('data-i18n-ph')); });
+                if(document.getElementById('btn_lbl_traffic')) {
+                    document.getElementById('btn_lbl_traffic').textContent = t('traffic'); document.getElementById('btn_lbl_accident').textContent = t('accident');
+                    document.getElementById('btn_lbl_hazard').textContent = t('hazard'); document.getElementById('btn_lbl_police').textContent = t('police');
+                    document.getElementById('btn_lbl_roadblock').textContent = t('roadblock'); document.getElementById('btn_lbl_camera').textContent = t('camera');
+                }
+                document.getElementById('lang-menu').classList.add('hidden');
+                updateSavedPlacesUI();
+            };
+
+            setAppLang(currentLang);
+
+            // أزرار اللغة والوضع الليلي
+            document.getElementById('btn-lang').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('lang-menu').classList.toggle('hidden'); });
+            document.addEventListener('click', () => { document.getElementById('lang-menu').classList.add('hidden'); });
+            document.getElementById('lang-ar').addEventListener('click', () => setAppLang('ar'));
+            document.getElementById('lang-en').addEventListener('click', () => setAppLang('en'));
+            document.getElementById('lang-ku').addEventListener('click', () => setAppLang('ku'));
+            
+            document.getElementById('btn-dark-mode').addEventListener('click', () => { document.documentElement.classList.toggle('dark'); });
+
+            // النوافذ (Modals)
+            const reportMenu = document.getElementById('report-menu');
+            document.getElementById('btn-open-report').addEventListener('click', () => reportMenu.classList.remove('hidden'));
+            document.getElementById('btn-close-report').addEventListener('click', () => reportMenu.classList.add('hidden'));
+            reportMenu.addEventListener('click', (e) => { if (e.target === reportMenu) reportMenu.classList.add('hidden'); });
+
+            const routesModal = document.getElementById('routes-modal');
+            document.getElementById('btn-routes').addEventListener('click', () => { routesModal.classList.remove('hidden'); updateSavedPlacesUI(); });
+            document.getElementById('btn-close-routes').addEventListener('click', () => routesModal.classList.add('hidden'));
+
+            const profileModal = document.getElementById('profile-modal');
+            document.getElementById('btn-profile').addEventListener('click', () => profileModal.classList.remove('hidden'));
+            document.getElementById('btn-close-profile').addEventListener('click', () => profileModal.classList.add('hidden'));
+
+            // دالة رسم المسار (محمية بـ Try Catch)
+            window.drawRoute = function(lat, lng, destinationName) {
+                try {
+                    const end = L.latLng(lat, lng);
+                    if (routingControl) { map.removeControl(routingControl); routingControl = null; }
+                    document.querySelectorAll('.custom-dest').forEach(el => el.remove()); document.getElementById('weather-widget').classList.add('hidden');
+                    
+                    L.marker(end, { icon: L.divIcon({ html: `<div class="bg-brand-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white"><i class="fas fa-flag-checkered"></i></div>`, className: 'custom-dest', iconSize: [40, 40], iconAnchor: [20, 40] }) }).addTo(map);
+                    
+                    document.getElementById('search-container').classList.add('hidden'); document.getElementById('search-results').classList.add('hidden'); document.getElementById('search-input').value = '';
+                    
+                    if (!userLocationMarker) {
+                        map.flyTo(end, 16, { animate: true, duration: 1.5 }); showToast(`${t('dest_set')} ${destinationName}`, "info");
+                        const btnCancel = document.createElement('button'); btnCancel.className = 'absolute top-20 end-4 bg-white dark:bg-darkcard text-red-500 w-12 h-12 rounded-full shadow-lg z-[1500] flex items-center justify-center border border-gray-100 dark:border-gray-700 custom-dest pointer-events-auto';
+                        btnCancel.innerHTML = '<i class="fas fa-times text-xl"></i>'; btnCancel.onclick = () => { document.querySelectorAll('.custom-dest').forEach(el => el.remove()); document.getElementById('search-container').classList.remove('hidden'); };
+                        document.body.appendChild(btnCancel); fetchWeather(lat, lng); return;
+                    }
+
+                    document.getElementById('nav-banner').classList.remove('hidden'); document.getElementById('nav-dest').textContent = destinationName; document.getElementById('nav-eta').textContent = t('calc');
+                    if(currentLang === 'en') document.getElementById('nav-arrow-icon').classList.add('scale-x-[-1]'); else document.getElementById('nav-arrow-icon').classList.remove('scale-x-[-1]');
+                    
+                    const start = userLocationMarker.getLatLng(); showToast(t('calc'), "info"); fetchWeather(lat, lng);
+
+                    routingControl = L.Routing.control({
+                        waypoints: [start, end], router: L.Routing.osrmv1({ language: (currentLang === 'ku' ? 'ar' : currentLang), profile: 'car' }),
+                        lineOptions: { styles: [{color: '#4f46e5', opacity: 0.9, weight: 8}] }, createMarker: function() { return null; }, fitSelectedRoutes: true, showAlternatives: false
+                    }).addTo(map);
+
+                    routingControl.on('routesfound', function(e) {
+                        const summary = e.routes[0].summary; const totalTimeMinutes = Math.round(summary.totalTime / 60); const totalDistKm = (summary.totalDistance / 1000).toFixed(1);
+                        document.getElementById('nav-eta').textContent = `${totalTimeMinutes} ${t('mins')} (${totalDistKm} ${t('km')})`;
+                        playAlertTone(); speakAlert(`${t('route_found')}. ${totalTimeMinutes} ${t('mins')}.`);
+                    });
+                    
+                    routingControl.on('routingerror', function(e) {
+                        showToast("تعذر رسم المسار، تأكد من الاتصال بالانترنت", "error");
+                        document.getElementById('nav-eta').textContent = "خطأ في الشبكة";
+                    });
+
+                } catch(e) {
+                    showToast("خطأ في الملاحة", "error");
+                }
+            }
+
+            document.getElementById('btn-cancel-route').addEventListener('click', () => {
+                if (routingControl) { map.removeControl(routingControl); routingControl = null; }
+                document.getElementById('nav-banner').classList.add('hidden'); document.getElementById('search-container').classList.remove('hidden');
+                document.querySelectorAll('.custom-dest').forEach(el => el.remove()); speakAlert(t('nav_cancel'));
+            });
+
+            // 5. نظام بحث Mapbox المحمي
+            const searchInput = document.getElementById('search-input'), searchResults = document.getElementById('search-results'), btnClearSearch = document.getElementById('btn-clear-search'), searchSpinner = document.getElementById('search-spinner');
+            let searchTimeout = null;
+
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                if (query.length > 0) btnClearSearch.classList.remove('hidden'); else btnClearSearch.classList.add('hidden');
+                clearTimeout(searchTimeout);
+                if (query.length < 3) { searchResults.classList.add('hidden'); if (searchSpinner) searchSpinner.classList.add('hidden'); return; }
+                if (searchSpinner) searchSpinner.classList.remove('hidden');
+
+                searchTimeout = setTimeout(async () => {
+                    try {
+                        const langQuery = currentLang === 'ku' ? 'ar' : currentLang;
+                        const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?country=iq&language=${langQuery}&access_token=${window.MAPBOX_API_KEY}`);
+                        if(!res.ok) throw new Error("Network Error");
+                        const data = await res.json();
+                        let features = data.features || [];
+                        
+                        if (userLocationMarker && features.length > 0) {
+                            const userPos = userLocationMarker.getLatLng();
+                            features.forEach(item => { item.distance = map.distance(userPos, L.latLng(item.center[1], item.center[0])); });
+                            features.sort((a, b) => a.distance - b.distance);
+                        }
+                        
+                        searchResults.innerHTML = '';
+                        if (features.length === 0) { 
+                            searchResults.innerHTML = `<div class="p-4 text-center text-gray-500 font-bold">${t('no_results')}</div>`; 
+                        } else {
+                            features.slice(0, 5).forEach(item => {
+                                const div = document.createElement('div');
+                                let mainName = item.text || 'موقع غير معروف';
+                                if (mainName.length > 30) mainName = mainName.substring(0, 30) + '...';
+                                let subNameParts = []; if(item.context) { item.context.forEach(c => { if(!c.id.startsWith('country')) subNameParts.push(c.text); }); }
+                                let subName = subNameParts.join('، '); if(!subName) subName = item.place_name.replace(mainName + ', ', '');
+
+                                let distStr = '';
+                                if (item.distance) {
+                                    distStr = item.distance > 1000 ? `<div class="text-[11px] bg-brand-50 text-brand-700 px-2 py-1 rounded-md font-bold whitespace-nowrap">${(item.distance / 1000).toFixed(1)} ${t('km')}</div>` : `<div class="text-[11px] bg-brand-50 text-brand-700 px-2 py-1 rounded-md font-bold whitespace-nowrap">${Math.round(item.distance)} ${t('meter')}</div>`;
+                                }
+                                div.className = 'p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex items-center gap-3 transition-colors text-start pointer-events-auto';
+                                div.innerHTML = `<div class="bg-brand-100 w-10 h-10 rounded-full flex items-center justify-center shrink-0"><i class="fas fa-map-marker-alt text-brand-600 text-lg"></i></div><div class="flex-1 min-w-0"><div class="text-sm font-black text-gray-800 truncate">${mainName}</div><div class="text-xs font-medium text-gray-500 truncate mt-0.5">${subName}</div></div>${distStr}`;
+                                div.onclick = () => window.drawRoute(item.center[1], item.center[0], mainName); 
+                                searchResults.appendChild(div);
+                            });
+                        }
+                        searchResults.classList.remove('hidden'); if (searchSpinner) searchSpinner.classList.add('hidden');
+                    } catch (err) { 
+                        if (searchSpinner) searchSpinner.classList.add('hidden'); 
+                    }
+                }, 600);
+            });
+
+            btnClearSearch.addEventListener('click', () => { searchInput.value = ''; searchResults.classList.add('hidden'); btnClearSearch.classList.add('hidden'); });
+
+            // 6. GPS والمسار المحمي
+            let lastLat = null, lastLng = null, lastTime = null;
+            function checkHazardsProximity(userLat, userLng) {
+                try {
+                    const userLatLng = L.latLng(userLat, userLng); const CONFIG = getReportConfig();
+                    for (const id in markersData) {
+                        const report = markersData[id]; const distance = map.distance(userLatLng, L.latLng(report.lat, report.lng));
+                        if (distance < 600 && !alertedMarkers.has(id)) { alertedMarkers.add(id); playAlertTone(); speakAlert(`${CONFIG[report.type].name} ${t('dist_away')} 500 ${t('meter')}.`); }
+                    }
+                } catch(e){}
+            }
+
+            const btnLocation = document.getElementById('btn-location'), locationIcon = document.getElementById('location-icon'), speedometer = document.getElementById('speedometer'), speedValue = document.getElementById('speed-value');
+
+            btnLocation.addEventListener('click', () => {
+                enableAudio(); 
+                if (!navigator.geolocation) { showToast(t('gps_error'), 'error'); return; }
+                if (watchId !== null) {
+                    navigator.geolocation.clearWatch(watchId); watchId = null;
+                    locationIcon.classList.replace('fa-location-dot', 'fa-location-crosshairs'); locationIcon.classList.replace('text-green-500', 'text-brand-600');
+                    speedometer.classList.add('hidden'); speakAlert(t('gps_stop')); showToast(t('gps_stop'), 'info');
+                } else {
+                    showToast(t('sat_connect'), 'info'); locationIcon.className = 'fas fa-spinner fa-spin text-xl text-brand-600'; speedometer.classList.remove('hidden');
+                    try {
+                        watchId = navigator.geolocation.watchPosition(
+                            (position) => {
+                                const lat = position.coords.latitude, lng = position.coords.longitude; let speedKmh = 0;
+                                if (position.coords.speed !== null && position.coords.speed > 0) speedKmh = Math.round(position.coords.speed * 3.6);
+                                else if (lastLat && lastLng && lastTime) { const dist = map.distance(L.latLng(lastLat, lastLng), L.latLng(lat, lng)), timeDiff = (position.timestamp - lastTime) / 1000; if (timeDiff > 0) speedKmh = Math.round((dist / timeDiff) * 3.6); }
+                                if (speedKmh < 3) speedKmh = 0; speedValue.textContent = speedKmh;
+
+                                let heading = position.coords.heading;
+                                if ((heading === null || isNaN(heading)) && lastLat && lastLng && speedKmh > 5) {
+                                    const dLng = (lng - lastLng) * Math.PI / 180, lat1 = lastLat * Math.PI / 180, lat2 = lat * Math.PI / 180;
+                                    const y = Math.sin(dLng) * Math.cos(lat2), x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+                                    heading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+                                }
+                                lastLat = lat; lastLng = lng; lastTime = position.timestamp; locationIcon.className = 'fas fa-location-dot text-xl text-green-500';
+                                let rotationStyle = heading ? `transform: rotate(${heading}deg);` : 'transform: rotate(0deg);';
+                                const arrowHtml = `<div class="user-nav-arrow" style="${rotationStyle}"><i class="fas fa-location-arrow"></i></div>`;
+
+                                if (!userLocationMarker) {
+                                    userLocationMarker = L.marker([lat, lng], { icon: L.divIcon({ html: arrowHtml, className: 'border-0 bg-transparent', iconSize: [50, 50], iconAnchor: [25, 25] }), zIndexOffset: 2000 }).addTo(map);
+                                    map.flyTo([lat, lng], 17, { animate: true });
+                                } else {
+                                    userLocationMarker.setLatLng([lat, lng]); userLocationMarker.setIcon(L.divIcon({ html: arrowHtml, className: 'border-0 bg-transparent', iconSize: [50, 50], iconAnchor: [25, 25] }));
+                                    map.panTo([lat, lng], { animate: true, duration: 1.0 }); 
+                                }
+                                checkHazardsProximity(lat, lng);
+                            },
+                            (error) => { showToast(t('gps_error'), 'error'); locationIcon.className = 'fas fa-location-crosshairs text-xl text-brand-600'; watchId = null; speedometer.classList.add('hidden'); },
+                            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                        );
+                    } catch(e) { showToast('GPS Error', 'error'); }
+                }
+            });
+
+            // الأماكن المحفوظة
+            function updateSavedPlacesUI() { 
+                try {
+                    ['home', 'work'].forEach(type => { const data = localStorage.getItem(`traffix_${type}`); const statusEl = document.getElementById(`${type}-status`); if(data) { const parsed = JSON.parse(data); statusEl.textContent = `مضبوط (${parsed.lat.toFixed(4)}, ...)`; statusEl.classList.add('text-green-500'); } else { statusEl.textContent = 'غير محدد'; statusEl.classList.remove('text-green-500'); } }); 
+                } catch(e) {}
+            }
+            
+            document.querySelectorAll('.btn-set-place').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const type = e.currentTarget.getAttribute('data-place');
+                    try {
+                        const pos = userLocationMarker ? userLocationMarker.getLatLng() : map.getCenter(); localStorage.setItem(`traffix_${type}`, JSON.stringify({ lat: pos.lat, lng: pos.lng })); showToast(t('set_success'), 'success'); updateSavedPlacesUI();
+                    } catch(err) { showToast('Storage Error', 'error'); }
+                });
+            });
+
+            document.querySelectorAll('.btn-route-place').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const type = e.currentTarget.getAttribute('data-place');
+                    try {
+                        const data = localStorage.getItem(`traffix_${type}`); if(data) { const parsed = JSON.parse(data); document.getElementById('routes-modal').classList.add('hidden'); window.drawRoute(parsed.lat, parsed.lng, t(type)); } else showToast('الرجاء تحديد المكان أولاً', 'error'); 
+                    } catch(err) {}
+                });
+            });
+
+            // 7. فايربيس الآمن
+            async function initUserProfile(appId) {
+                if (!currentUser || !db) return;
+                try {
+                    const userRef = db.doc(`artifacts/${appId}/users/${currentUser.uid}/profile`);
+                    const docSnap = await userRef.get();
+                    if (!docSnap.exists) await userRef.set({ points: 0, rank: 'beginner', isRegistered: false });
+                    userRef.onSnapshot((doc) => {
+                        if(doc.exists) {
+                            const data = doc.data(); document.getElementById('user-badge').textContent = data.points; document.getElementById('profile-points').textContent = data.points;
+                            let rankKey = 'beginner'; if (data.points > 50) rankKey = 'expert'; if (data.points > 200) rankKey = 'pro'; if (data.points > 500) rankKey = 'king'; document.getElementById('profile-rank').textContent = t(rankKey);
+                            if(data.isRegistered) { document.getElementById('profile-name').textContent = t('verified'); document.getElementById('profile-desc').textContent = t('member'); document.getElementById('profile-avatar').className = "w-24 h-24 bg-gradient-to-br from-brand-500 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg border-4 border-white dark:border-darkbg"; document.getElementById('profile-avatar').innerHTML = '<i class="fas fa-car-side text-4xl text-white"></i>'; document.getElementById('btn-login').classList.add('hidden'); }
+                        }
+                    });
+                } catch(e) {}
+            }
+
+            document.getElementById('btn-login').addEventListener('click', async () => { const appId = typeof __app_id !== 'undefined' ? __app_id : 'iraq-map-app'; if(currentUser && db) { try { const userRef = db.doc(`artifacts/${appId}/users/${currentUser.uid}/profile`); await userRef.update({ isRegistered: true, points: firebase.firestore.FieldValue.increment(50) }); showToast(t('auth_success') + " (+50 " + t('points') + ")", "success"); } catch(e){} } });
+
+            function listenToMapReports(appId) {
+                if (!currentUser || !db) return;
+                try {
+                    const collectionPath = db.collection(`artifacts/${appId}/public/data/map_reports`);
+                    collectionPath.onSnapshot((snapshot) => { snapshot.docChanges().forEach((change) => { const data = change.doc.data(), id = change.doc.id, now = new Date().getTime(), reportTime = data.timestamp ? data.timestamp.toDate().getTime() : now, hoursDiff = (now - reportTime) / (1000 * 60 * 60); if (hoursDiff > 3) { removeMarkerFromUI(id); return; } if (change.type === "added" || change.type === "modified") { addMarkerToUI(id, data); markersData[id] = data; } if (change.type === "removed") { removeMarkerFromUI(id); delete markersData[id]; alertedMarkers.delete(id); } }); }, (error) => {});
+                } catch(e){}
+            }
+
+            window.voteReport = async function(id, isConfirm) {
+                enableAudio(); if (!currentUser || !db) return; const appId = typeof __app_id !== 'undefined' ? __app_id : 'iraq-map-app', docRef = db.doc(`artifacts/${appId}/public/data/map_reports/${id}`), userRef = db.doc(`artifacts/${appId}/users/${currentUser.uid}/profile`);
+                try { if (isConfirm) { await docRef.update({ confirms: firebase.firestore.FieldValue.increment(1) }); await userRef.update({ points: firebase.firestore.FieldValue.increment(2) }); showToast(t('vote_sent'), "success"); } else { await docRef.update({ denies: firebase.firestore.FieldValue.increment(1) }); } map.closePopup(); } catch (e) {}
+            };
+
+            function addMarkerToUI(id, data) {
+                if (!data.lat || !data.lng || !data.type) return; const CONFIG = getReportConfig(), config = CONFIG[data.type] || CONFIG['hazard']; removeMarkerFromUI(id);
+                const customDivIcon = L.divIcon({ html: `<div class="marker-icon-container ${config.bgClass}"><i class="fas ${config.icon} ${config.color} text-2xl drop-shadow-md"></i></div><div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 10px solid ${document.documentElement.classList.contains('dark') ? '#0f172a' : 'white'}; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);"></div>`, className: 'custom-marker', iconSize: [48, 58], iconAnchor: [24, 58], popupAnchor: [0, -55] });
+                const marker = L.marker([data.lat, data.lng], { icon: customDivIcon }).addTo(map); let timeStr = t('now'); if (data.timestamp && data.timestamp.toDate) timeStr = new Date(data.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); const confirms = data.confirms || 0, commentHtml = data.comment ? `<div class="bg-gray-50 p-2 rounded mt-2 text-xs text-gray-700 italic border border-gray-100">"${data.comment}"</div>` : '';
+                marker.bindPopup(`<div class="text-center p-2 min-w-[180px] font-tajawal text-start" dir="${document.documentElement.dir}"><div class="font-black text-gray-900 text-lg">${config.name}</div><div class="text-xs text-gray-500 font-bold mb-2"><i class="far fa-clock mx-1"></i> ${timeStr}</div>${commentHtml}<div class="mt-3 pt-3 border-t border-gray-100 flex gap-2 justify-center"><button onclick="voteReport('${id}', true)" class="flex-1 bg-brand-50 text-brand-600 rounded-lg py-1.5 text-xs font-bold hover:bg-brand-100"><i class="fas fa-thumbs-up mx-1"></i> ${t('exist')} (${confirms})</button><button onclick="voteReport('${id}', false)" class="flex-1 bg-gray-50 text-gray-600 rounded-lg py-1.5 text-xs font-bold hover:bg-gray-200"><i class="fas fa-thumbs-down mx-1"></i></button></div></div>`);
+                markersMap[id] = marker;
+            }
+
+            function removeMarkerFromUI(id) { if (markersMap[id]) { map.removeLayer(markersMap[id]); delete markersMap[id]; } }
+
+            document.querySelectorAll('.report-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const reportType = e.currentTarget.getAttribute('data-report');
+                    enableAudio(); document.getElementById('report-menu').classList.add('hidden'); const commentInput = document.getElementById('report-comment'), comment = commentInput.value.trim(); commentInput.value = ''; const pos = userLocationMarker ? userLocationMarker.getLatLng() : map.getCenter();
+                    if (!currentUser || !db) { const fakeId = 'demo_' + Date.now(); addMarkerToUI(fakeId, { type: reportType, lat: pos.lat, lng: pos.lng, comment: comment, confirms: 1 }); showToast(t('offline_mode'), 'success'); return; }
+                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'iraq-map-app';
+                    try { await db.collection(`artifacts/${appId}/public/data/map_reports`).add({ type: reportType, lat: pos.lat, lng: pos.lng, comment: comment, timestamp: firebase.firestore.FieldValue.serverTimestamp(), userId: currentUser.uid, confirms: 1, denies: 0 }); const userRef = db.doc(`artifacts/${appId}/users/${currentUser.uid}/profile`); await userRef.update({ points: firebase.firestore.FieldValue.increment(10) }); showToast(t('report_sent') + ' (+10 pts)', 'success'); } catch (error) { showToast('Error', 'error'); }
+                });
+            });
+
+            // تشغيل الفايربيس إن وجد
+            setTimeout(async () => {
+                try {
+                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'iraq-map-app';
+                    const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+                    if (configStr && firebase && firebase.apps.length === 0) {
+                        firebase.initializeApp(JSON.parse(configStr)); auth = firebase.auth(); db = firebase.firestore();
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await auth.signInWithCustomToken(__initial_auth_token); } else { await auth.signInAnonymously(); }
+                        currentUser = auth.currentUser; initUserProfile(appId); listenToMapReports(appId);
+                    }
+                } catch(e) { console.warn("Firebase not active"); }
+            }, 2000);
+
+        })(); // نهاية صندوق الحماية
+    </script>
+</body>
+</html>
